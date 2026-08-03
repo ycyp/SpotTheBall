@@ -39,6 +39,38 @@
     opacity:0.35;
   }
 
+  /* ---------- Auth ---------- */
+  .auth-card{
+    background:var(--card-bg); border:1px solid #2c5943; border-radius:14px; padding:24px;
+    display:flex; flex-direction:column; gap:12px; backdrop-filter:blur(6px);
+  }
+  .auth-card h2{ font-family:'Teko',sans-serif; font-size:28px; text-align:center; letter-spacing:1px; }
+  .auth-card input{
+    background:#0f2018; border:1px solid #2c5943; border-radius:8px; padding:11px 12px;
+    color:var(--line-white); font-size:15px; font-family:inherit; width:100%;
+  }
+  .auth-card input:focus{ outline:none; border-color:var(--amber); }
+  .auth-card button{
+    background:var(--amber); color:#12261e; border:none; border-radius:8px; padding:11px;
+    font-family:'Teko',sans-serif; font-size:20px; font-weight:700; cursor:pointer;
+  }
+  .auth-card button:hover{ background:#f2b455; }
+  .auth-card button:disabled{ opacity:0.6; cursor:default; }
+  #auth-error{ color:#e08a72; font-size:13px; min-height:16px; text-align:center; }
+  #auth-toggle{ text-align:center; font-size:13px; color:#a9c2b4; }
+  #auth-toggle span{ color:var(--amber); cursor:pointer; text-decoration:underline; }
+
+  .user-bar{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;
+    font-size:13px; color:#a9c2b4;
+  }
+  .user-bar button{
+    background:none; border:1px solid #2c5943; color:#a9c2b4; padding:6px 12px;
+    border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit;
+  }
+  .user-bar button:hover{ border-color:#d9634c; color:#d9634c; }
+
+  /* ---------- Form ---------- */
   form{
     background:var(--card-bg); border:1px solid #2c5943; border-radius:14px;
     padding:20px; display:flex; flex-direction:column; gap:14px;
@@ -132,7 +164,7 @@
   .checkin-card .no-photo{
     width:72px; height:72px; border-radius:8px; flex-shrink:0; background:#0f2018;
     border:1px dashed #2c5943; display:flex; align-items:center; justify-content:center;
-    font-size:11px; color:#5d7c6d; text-align:center;
+    font-size:10px; color:#5d7c6d; text-align:center; padding:2px;
   }
   .checkin-info{ flex:1; min-width:0; }
   .checkin-info .name{
@@ -165,48 +197,90 @@
     <div class="court-line"></div>
   </header>
 
-  <form id="checkin-form">
-    <div>
-      <label for="sport-type">運動類型</label>
-      <select id="sport-type"></select>
+  <!-- ---------- 登入畫面 ---------- -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <h2 id="auth-title">登入</h2>
+      <input type="email" id="auth-email" placeholder="Email" autocomplete="email">
+      <input type="password" id="auth-password" placeholder="密碼（至少 6 碼）" autocomplete="current-password">
+      <button id="auth-submit">登入</button>
+      <div id="auth-error"></div>
+      <p id="auth-toggle">還沒有帳號？<span id="auth-toggle-link">建立帳號</span></p>
     </div>
-    <div>
-      <label for="court-name">球場名字</label>
-      <input type="text" id="court-name" placeholder="例如：大安運動中心 3 號場" required>
+  </div>
+
+  <!-- ---------- App 主畫面（登入後才顯示） ---------- -->
+  <div id="app-screen" style="display:none;">
+    <div class="user-bar">
+      <span id="user-email"></span>
+      <button id="logout-btn">登出</button>
     </div>
-    <div>
-      <label for="checkin-date">日期</label>
-      <input type="date" id="checkin-date" required>
-    </div>
-    <div>
-      <label>位置(選填)</label>
-      <div class="geo-row">
-        <button type="button" class="geo-btn" id="geo-btn">📍 取得目前位置</button>
-        <span class="geo-status" id="geo-status"></span>
+
+    <form id="checkin-form">
+      <div>
+        <label for="sport-type">運動類型</label>
+        <select id="sport-type"></select>
       </div>
-      <div class="geo-hint" id="geo-hint">拖曳圖釘可微調位置</div>
-      <div id="form-map"></div>
-    </div>
-    <div>
-      <label for="photo-input">照片</label>
-      <input type="file" id="photo-input" accept="image/*">
-      <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
-    </div>
-    <button type="submit">打卡</button>
-  </form>
+      <div>
+        <label for="court-name">球場名字</label>
+        <input type="text" id="court-name" placeholder="例如：大安運動中心 3 號場" required>
+      </div>
+      <div>
+        <label for="checkin-date">日期</label>
+        <input type="date" id="checkin-date" required>
+      </div>
+      <div>
+        <label>位置(選填)</label>
+        <div class="geo-row">
+          <button type="button" class="geo-btn" id="geo-btn">📍 取得目前位置</button>
+          <span class="geo-status" id="geo-status"></span>
+        </div>
+        <div class="geo-hint" id="geo-hint">拖曳圖釘可微調位置</div>
+        <div id="form-map"></div>
+      </div>
+      <div>
+        <label for="photo-input">照片（僅存於此裝置）</label>
+        <input type="file" id="photo-input" accept="image/*">
+        <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
+      </div>
+      <button type="submit">打卡</button>
+    </form>
 
-  <div class="section-title">總覽地圖</div>
-  <div id="overview-map"></div>
-  <div id="map-empty">還沒有帶定位的打卡紀錄</div>
+    <div class="section-title">總覽地圖</div>
+    <div id="overview-map"></div>
+    <div id="map-empty">還沒有帶定位的打卡紀錄</div>
 
-  <div class="section-title">打卡紀錄 <span class="count" id="record-count">0</span></div>
-  <div class="filter-row" id="filter-row"></div>
-  <div id="empty-state">還沒有任何打卡紀錄，開始你的第一筆吧！</div>
-  <div class="checkin-list" id="checkin-list"></div>
+    <div class="section-title">打卡紀錄 <span class="count" id="record-count">0</span></div>
+    <div class="filter-row" id="filter-row"></div>
+    <div id="empty-state">還沒有任何打卡紀錄，開始你的第一筆吧！</div>
+    <div class="checkin-list" id="checkin-list"></div>
+  </div>
 </div>
 
-<script>
-  const STORAGE_KEY = 'courtCheckins';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, doc,
+    query, where, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDPtIKbS-GA-zjK40kSM2us7iRwxLN8iak",
+    authDomain: "spottheball-1cc34.firebaseapp.com",
+    projectId: "spottheball-1cc34",
+    storageBucket: "spottheball-1cc34.firebasestorage.app",
+    messagingSenderId: "263172562032",
+    appId: "1:263172562032:web:8368a7034938f55b3ae8b5",
+    measurementId: "G-5BHVXCDS5B"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
   const SPORTS = {
     basketball: { label:'籃球場', color:'#e8823d' },
@@ -216,6 +290,18 @@
     soccer:     { label:'足球場', color:'#4a90d9' },
     other:      { label:'其他場館', color:'#8b9d94' }
   };
+
+  // ---------- DOM refs ----------
+  const authScreen = document.getElementById('auth-screen');
+  const appScreen = document.getElementById('app-screen');
+  const authEmail = document.getElementById('auth-email');
+  const authPassword = document.getElementById('auth-password');
+  const authSubmit = document.getElementById('auth-submit');
+  const authError = document.getElementById('auth-error');
+  const authTitle = document.getElementById('auth-title');
+  const authToggleLink = document.getElementById('auth-toggle-link');
+  const userEmailEl = document.getElementById('user-email');
+  const logoutBtn = document.getElementById('logout-btn');
 
   const form = document.getElementById('checkin-form');
   const sportSelect = document.getElementById('sport-type');
@@ -240,27 +326,23 @@
   let activeFilter = 'all';
   let formMap = null, formMarker = null;
   let overviewMap = null, overviewMarkers = [];
+  let currentUser = null;
+  let currentRecords = [];
+  let unsubscribeRecords = null;
+  let isSignup = false;
 
-  // 初始化運動類型下拉選單
   Object.entries(SPORTS).forEach(([key, s]) => {
     const opt = document.createElement('option');
     opt.value = key; opt.textContent = s.label;
     sportSelect.appendChild(opt);
   });
-
   dateInput.valueAsDate = new Date();
 
-  function loadRecords(){
-    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch(e){ console.error('讀取紀錄失敗', e); return []; }
-  }
-  function saveRecords(records){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
-    catch(e){
-      alert('儲存失敗：可能是照片太多或太大，導致瀏覽器儲存空間不足。');
-      console.error(e);
-    }
-  }
+  // ---------- 本機照片（不上雲端） ----------
+  function getLocalPhoto(id){ try{ return localStorage.getItem('photo:' + id); }catch(e){ return null; } }
+  function setLocalPhoto(id, dataUrl){ try{ localStorage.setItem('photo:' + id, dataUrl); }catch(e){ console.error(e); } }
+  function removeLocalPhoto(id){ try{ localStorage.removeItem('photo:' + id); }catch(e){} }
+
   function formatDate(dateStr){
     const d = new Date(dateStr + 'T00:00:00');
     return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
@@ -272,12 +354,80 @@
   }
   function sportOf(key){ return SPORTS[key] || SPORTS.other; }
 
-  // ---------- 定位（打卡表單用的小地圖） ----------
-  geoBtn.addEventListener('click', () => {
-    if(!navigator.geolocation){
-      geoStatus.textContent = '此瀏覽器不支援定位';
-      return;
+  // ---------- 登入 / 註冊 ----------
+  function translateAuthError(code){
+    const map = {
+      'auth/email-already-in-use': '這個 Email 已經註冊過了，請直接登入',
+      'auth/invalid-email': 'Email 格式不正確',
+      'auth/weak-password': '密碼至少要 6 個字元',
+      'auth/user-not-found': '找不到這個帳號，請確認 Email 或先建立帳號',
+      'auth/wrong-password': '密碼錯誤',
+      'auth/invalid-credential': '帳號或密碼錯誤',
+      'auth/too-many-requests': '嘗試次數過多，請稍後再試'
+    };
+    return map[code] || ('發生錯誤（' + code + '）');
+  }
+
+  authToggleLink.addEventListener('click', () => {
+    isSignup = !isSignup;
+    authTitle.textContent = isSignup ? '建立帳號' : '登入';
+    authSubmit.textContent = isSignup ? '建立帳號' : '登入';
+    authToggleLink.parentElement.firstChild.textContent = isSignup ? '已經有帳號？' : '還沒有帳號？';
+    authToggleLink.textContent = isSignup ? '登入' : '建立帳號';
+    authError.textContent = '';
+  });
+
+  authSubmit.addEventListener('click', async () => {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    authError.textContent = '';
+    if(!email || !password){ authError.textContent = '請輸入 Email 和密碼'; return; }
+    authSubmit.disabled = true;
+    try{
+      if(isSignup){
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    }catch(err){
+      authError.textContent = translateAuthError(err.code);
+    }finally{
+      authSubmit.disabled = false;
     }
+  });
+
+  logoutBtn.addEventListener('click', () => signOut(auth));
+
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    if(user){
+      authScreen.style.display = 'none';
+      appScreen.style.display = 'block';
+      userEmailEl.textContent = user.email;
+      subscribeToRecords(user.uid);
+    } else {
+      if(unsubscribeRecords){ unsubscribeRecords(); unsubscribeRecords = null; }
+      currentRecords = [];
+      appScreen.style.display = 'none';
+      authScreen.style.display = 'block';
+      authEmail.value = ''; authPassword.value = '';
+    }
+  });
+
+  function subscribeToRecords(uid){
+    const q = query(collection(db, 'checkins'), where('uid', '==', uid));
+    unsubscribeRecords = onSnapshot(q, snapshot => {
+      currentRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, err => {
+      console.error(err);
+      alert('讀取紀錄失敗：' + err.message);
+    });
+  }
+
+  // ---------- 定位 ----------
+  geoBtn.addEventListener('click', () => {
+    if(!navigator.geolocation){ geoStatus.textContent = '此瀏覽器不支援定位'; return; }
     geoStatus.textContent = '定位中…';
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -298,9 +448,7 @@
     formMapEl.style.display = 'block';
     if(!formMap){
       formMap = L.map(formMapEl).setView([coords.lat, coords.lng], 16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(formMap);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(formMap);
       formMarker = L.marker([coords.lat, coords.lng], { draggable:true }).addTo(formMap);
       formMarker.on('dragend', () => {
         const p = formMarker.getLatLng();
@@ -330,34 +478,40 @@
     reader.readAsDataURL(file);
   });
 
-  // ---------- 送出表單 ----------
-  form.addEventListener('submit', e => {
+  // ---------- 送出打卡 ----------
+  form.addEventListener('submit', async e => {
     e.preventDefault();
+    if(!currentUser) return;
     const name = nameInput.value.trim();
     const date = dateInput.value;
     const sport = sportSelect.value;
     if(!name || !date) return;
 
-    const records = loadRecords();
-    records.push({
-      id: Date.now(),
-      name, date, sport,
-      photo: pendingPhoto,
-      lat: pendingCoords ? pendingCoords.lat : null,
-      lng: pendingCoords ? pendingCoords.lng : null,
-      createdAt: Date.now()
-    });
-    saveRecords(records);
+    const submitBtn = form.querySelector('button[type=submit]');
+    submitBtn.disabled = true;
+    try{
+      const docRef = await addDoc(collection(db, 'checkins'), {
+        uid: currentUser.uid,
+        name, date, sport,
+        lat: pendingCoords ? pendingCoords.lat : null,
+        lng: pendingCoords ? pendingCoords.lng : null,
+        createdAt: Date.now()
+      });
+      if(pendingPhoto) setLocalPhoto(docRef.id, pendingPhoto);
 
-    form.reset();
-    dateInput.valueAsDate = new Date();
-    sportSelect.value = 'basketball';
-    pendingPhoto = null; pendingCoords = null;
-    previewBox.style.display = 'none';
-    geoStatus.textContent = ''; geoHint.style.display = 'none';
-    formMapEl.style.display = 'none';
-
-    render();
+      form.reset();
+      dateInput.valueAsDate = new Date();
+      sportSelect.value = 'basketball';
+      pendingPhoto = null; pendingCoords = null;
+      previewBox.style.display = 'none';
+      geoStatus.textContent = ''; geoHint.style.display = 'none';
+      formMapEl.style.display = 'none';
+    }catch(err){
+      alert('打卡失敗：' + err.message);
+      console.error(err);
+    }finally{
+      submitBtn.disabled = false;
+    }
   });
 
   // ---------- 篩選 chips ----------
@@ -367,7 +521,6 @@
     const allChip = document.createElement('div');
     allChip.className = 'filter-chip' + (activeFilter === 'all' ? ' active' : '');
     allChip.textContent = '全部';
-    allChip.style.borderColor = activeFilter === 'all' ? 'var(--amber)' : '';
     allChip.addEventListener('click', () => { activeFilter = 'all'; render(); });
     filterRow.appendChild(allChip);
 
@@ -398,17 +551,14 @@
 
     if(!overviewMap){
       overviewMap = L.map(overviewMapEl);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(overviewMap);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(overviewMap);
     }
 
     geoRecords.forEach(r => {
       const s = sportOf(r.sport);
-      const marker = L.circleMarker([r.lat, r.lng], {
-        radius:9, color:'#fff', weight:2, fillColor:s.color, fillOpacity:0.9
-      }).addTo(overviewMap);
-      const photoHtml = r.photo ? `<img src="${r.photo}">` : '';
+      const marker = L.circleMarker([r.lat, r.lng], { radius:9, color:'#fff', weight:2, fillColor:s.color, fillOpacity:0.9 }).addTo(overviewMap);
+      const photo = getLocalPhoto(r.id);
+      const photoHtml = photo ? `<img src="${photo}">` : '';
       marker.bindPopup(`
         <div class="popup-card">
           ${photoHtml}
@@ -427,13 +577,12 @@
 
   // ---------- 主渲染 ----------
   function render(){
-    const allRecords = loadRecords();
-    renderFilters(allRecords);
-    renderOverviewMap(allRecords);
+    renderFilters(currentRecords);
+    renderOverviewMap(currentRecords);
 
     const records = activeFilter === 'all'
-      ? allRecords
-      : allRecords.filter(r => r.sport === activeFilter);
+      ? currentRecords
+      : currentRecords.filter(r => r.sport === activeFilter);
 
     countBadge.textContent = records.length;
     emptyState.style.display = records.length ? 'none' : 'block';
@@ -441,14 +590,15 @@
 
     records
       .slice()
-      .sort((a,b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+      .sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0))
       .forEach(record => {
         const s = sportOf(record.sport);
+        const photo = getLocalPhoto(record.id);
         const card = document.createElement('div');
         card.className = 'checkin-card';
-        const media = record.photo
-          ? `<img src="${record.photo}" alt="${escapeHtml(record.name)}">`
-          : `<div class="no-photo">無照片</div>`;
+        const media = photo
+          ? `<img src="${photo}" alt="${escapeHtml(record.name)}">`
+          : `<div class="no-photo">此裝置<br>無照片</div>`;
         card.innerHTML = `
           ${media}
           <div class="checkin-info">
@@ -462,16 +612,17 @@
       });
 
     list.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
-        const updated = loadRecords().filter(r => String(r.id) !== id);
-        saveRecords(updated);
-        render();
+        try{
+          await deleteDoc(doc(db, 'checkins', id));
+          removeLocalPhoto(id);
+        }catch(err){
+          alert('刪除失敗：' + err.message);
+        }
       });
     });
   }
-
-  render();
 </script>
 </body>
 </html>
