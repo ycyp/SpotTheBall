@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpotTheBall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --court-navy:#12261e;
+    --line-white:#f4efe3;
+    --amber:#e8a33d;
+    --amber-dim:#c8862a;
+    --card-bg:#17322650;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: radial-gradient(ellipse at top, #1c3c2c 0%, var(--court-navy) 60%);
+    color:var(--line-white);
+    font-family:'Noto Sans TC', sans-serif;
+    min-height:100vh;
+    padding:24px 16px 80px;
+  }
+  .wrap{max-width:560px; margin:0 auto;}
+
+  header{text-align:center; margin-bottom:28px;}
+  header h1{
+    font-family:'Teko', sans-serif; font-weight:700; font-size:56px;
+    letter-spacing:2px; color:var(--line-white);
+    text-shadow:0 0 18px rgba(232,163,61,0.25);
+  }
+  header p{font-size:13px; color:#a9c2b4; letter-spacing:1px;}
+  .court-line{
+    height:2px; margin:16px auto 0; max-width:320px;
+    background:repeating-linear-gradient(90deg, var(--line-white) 0 14px, transparent 14px 24px);
+    opacity:0.35;
+  }
+
+  form{
+    background:var(--card-bg); border:1px solid #2c5943; border-radius:14px;
+    padding:20px; display:flex; flex-direction:column; gap:14px;
+    backdrop-filter:blur(6px);
+  }
+  label{
+    font-size:12px; letter-spacing:1.5px; color:var(--amber);
+    text-transform:uppercase; display:block; margin-bottom:6px;
+  }
+  input[type=text], input[type=date], select{
+    width:100%; background:#0f2018; border:1px solid #2c5943; border-radius:8px;
+    padding:11px 12px; color:var(--line-white); font-size:15px; font-family:inherit;
+  }
+  select{ appearance:none; -webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a9c2b4'><path d='M5.25 7.5L10 12.25 14.75 7.5z'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; background-size:16px;
+  }
+  input[type=text]:focus, input[type=date]:focus, select:focus{ outline:none; border-color:var(--amber); }
+  input[type=file]{ color:#a9c2b4; font-size:13px; }
+  input[type=file]::file-selector-button{
+    background:var(--amber-dim); color:#12261e; border:none; padding:8px 14px;
+    border-radius:6px; font-weight:700; cursor:pointer; margin-right:10px;
+    font-family:'Noto Sans TC', sans-serif;
+  }
+
+  #preview-box{ display:none; margin-top:4px; }
+  #preview-box img{
+    width:100%; max-height:220px; object-fit:cover; border-radius:8px; border:1px solid #2c5943;
+  }
+
+  .geo-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .geo-btn{
+    background:#0f2018; border:1px solid #2c5943; color:var(--line-white);
+    padding:9px 14px; border-radius:8px; font-size:13px; cursor:pointer;
+    display:flex; align-items:center; gap:6px; font-family:inherit;
+  }
+  .geo-btn:hover{ border-color:var(--amber); }
+  .geo-status{ font-size:12px; color:#7d9a8b; }
+  #form-map{
+    display:none; height:180px; border-radius:10px; margin-top:8px;
+    border:1px solid #2c5943; overflow:hidden;
+  }
+  .geo-hint{ font-size:11px; color:#7d9a8b; margin-top:4px; display:none; }
+
+  button[type=submit]{
+    margin-top:4px; background:var(--amber); color:#12261e; border:none; border-radius:8px;
+    padding:11px; font-size:22px; font-weight:700; letter-spacing:1px; cursor:pointer;
+    font-family:'Teko', sans-serif; transition:transform .12s ease, background .12s ease;
+  }
+  button[type=submit]:hover{ background:#f2b455; }
+  button[type=submit]:active{ transform:scale(0.98); }
+
+  .section-title{
+    font-family:'Teko', sans-serif; font-size:26px; letter-spacing:1px; color:var(--line-white);
+    margin:34px 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  .section-title .count{
+    font-size:14px; font-family:'Noto Sans TC', sans-serif; color:var(--amber);
+    background:#0f2018; border:1px solid #2c5943; padding:2px 10px; border-radius:999px;
+  }
+
+  #overview-map{
+    height:260px; border-radius:12px; border:1px solid #2c5943; margin-bottom:8px; display:none;
+  }
+  #map-empty{
+    text-align:center; color:#7d9a8b; font-size:13px; padding:24px 10px;
+    border:1px dashed #2c5943; border-radius:12px; margin-bottom:8px;
+  }
+
+  #empty-state{
+    text-align:center; color:#7d9a8b; font-size:14px; padding:40px 10px;
+    border:1px dashed #2c5943; border-radius:12px;
+  }
+
+  .filter-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .filter-chip{
+    font-size:12px; padding:6px 12px; border-radius:999px; border:1px solid #2c5943;
+    background:#0f2018; color:#a9c2b4; cursor:pointer; user-select:none;
+  }
+  .filter-chip.active{ border-color:var(--amber); color:var(--amber); }
+
+  .checkin-list{ display:flex; flex-direction:column; gap:12px; }
+  .checkin-card{
+    display:flex; gap:12px; background:var(--card-bg); border:1px solid #2c5943;
+    border-radius:12px; padding:12px; align-items:center; animation:rise .25s ease;
+  }
+  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .checkin-card img{
+    width:72px; height:72px; object-fit:cover; border-radius:8px; flex-shrink:0; border:1px solid #2c5943;
+  }
+  .checkin-card .no-photo{
+    width:72px; height:72px; border-radius:8px; flex-shrink:0; background:#0f2018;
+    border:1px dashed #2c5943; display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:#5d7c6d; text-align:center;
+  }
+  .checkin-info{ flex:1; min-width:0; }
+  .checkin-info .name{
+    font-size:16px; font-weight:700; color:var(--line-white);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .checkin-info .date{ font-size:13px; color:var(--amber); margin-top:2px; }
+  .badge{
+    font-size:10px; letter-spacing:.5px; color:#12261e; padding:2px 8px;
+    border-radius:999px; display:inline-block; margin-top:6px; font-weight:700;
+  }
+  .delete-btn{
+    background:none; border:1px solid #3a5c4c; color:#a9c2b4; width:30px; height:30px;
+    border-radius:8px; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0;
+  }
+  .delete-btn:hover{ border-color:#d9634c; color:#d9634c; }
+
+  .leaflet-popup-content{ font-family:'Noto Sans TC', sans-serif; }
+  .popup-card{ text-align:center; min-width:120px; }
+  .popup-card img{ width:100%; max-height:100px; object-fit:cover; border-radius:6px; margin-bottom:6px; }
+  .popup-card .p-name{ font-weight:700; font-size:13px; }
+  .popup-card .p-date{ font-size:11px; color:#666; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SpotTheBall</h1>
+    <p>COURT CHECK-IN LOG</p>
+    <div class="court-line"></div>
+  </header>
+
+  <form id="checkin-form">
+    <div>
+      <label for="sport-type">運動類型</label>
+      <select id="sport-type"></select>
+    </div>
+    <div>
+      <label for="court-name">球場名字</label>
+      <input type="text" id="court-name" placeholder="例如：大安運動中心 3 號場" required>
+    </div>
+    <div>
+      <label for="checkin-date">日期</label>
+      <input type="date" id="checkin-date" required>
+    </div>
+    <div>
+      <label>位置(選填)</label>
+      <div class="geo-row">
+        <button type="button" class="geo-btn" id="geo-btn">📍 取得目前位置</button>
+        <span class="geo-status" id="geo-status"></span>
+      </div>
+      <div class="geo-hint" id="geo-hint">拖曳圖釘可微調位置</div>
+      <div id="form-map"></div>
+    </div>
+    <div>
+      <label for="photo-input">照片</label>
+      <input type="file" id="photo-input" accept="image/*">
+      <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
+    </div>
+    <button type="submit">打卡</button>
+  </form>
+
+  <div class="section-title">總覽地圖</div>
+  <div id="overview-map"></div>
+  <div id="map-empty">還沒有帶定位的打卡紀錄</div>
+
+  <div class="section-title">打卡紀錄 <span class="count" id="record-count">0</span></div>
+  <div class="filter-row" id="filter-row"></div>
+  <div id="empty-state">還沒有任何打卡紀錄，開始你的第一筆吧！</div>
+  <div class="checkin-list" id="checkin-list"></div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'courtCheckins';
+
+  const SPORTS = {
+    basketball: { label:'籃球場', color:'#e8823d' },
+    baseball:   { label:'棒球場', color:'#d9634c' },
+    tennis:     { label:'網球場', color:'#b5d94a' },
+    badminton:  { label:'羽球場', color:'#a78bd9' },
+    soccer:     { label:'足球場', color:'#4a90d9' },
+    other:      { label:'其他場館', color:'#8b9d94' }
+  };
+
+  const form = document.getElementById('checkin-form');
+  const sportSelect = document.getElementById('sport-type');
+  const nameInput = document.getElementById('court-name');
+  const dateInput = document.getElementById('checkin-date');
+  const photoInput = document.getElementById('photo-input');
+  const previewBox = document.getElementById('preview-box');
+  const previewImg = document.getElementById('preview-img');
+  const list = document.getElementById('checkin-list');
+  const emptyState = document.getElementById('empty-state');
+  const countBadge = document.getElementById('record-count');
+  const geoBtn = document.getElementById('geo-btn');
+  const geoStatus = document.getElementById('geo-status');
+  const geoHint = document.getElementById('geo-hint');
+  const formMapEl = document.getElementById('form-map');
+  const filterRow = document.getElementById('filter-row');
+  const overviewMapEl = document.getElementById('overview-map');
+  const mapEmpty = document.getElementById('map-empty');
+
+  let pendingPhoto = null;
+  let pendingCoords = null;
+  let activeFilter = 'all';
+  let formMap = null, formMarker = null;
+  let overviewMap = null, overviewMarkers = [];
+
+  // 初始化運動類型下拉選單
+  Object.entries(SPORTS).forEach(([key, s]) => {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = s.label;
+    sportSelect.appendChild(opt);
+  });
+
+  dateInput.valueAsDate = new Date();
+
+  function loadRecords(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch(e){ console.error('讀取紀錄失敗', e); return []; }
+  }
+  function saveRecords(records){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+    catch(e){
+      alert('儲存失敗：可能是照片太多或太大，導致瀏覽器儲存空間不足。');
+      console.error(e);
+    }
+  }
+  function formatDate(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function sportOf(key){ return SPORTS[key] || SPORTS.other; }
+
+  // ---------- 定位（打卡表單用的小地圖） ----------
+  geoBtn.addEventListener('click', () => {
+    if(!navigator.geolocation){
+      geoStatus.textContent = '此瀏覽器不支援定位';
+      return;
+    }
+    geoStatus.textContent = '定位中…';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        pendingCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        geoStatus.textContent = '已取得位置';
+        geoHint.style.display = 'block';
+        showFormMap(pendingCoords);
+      },
+      err => {
+        geoStatus.textContent = '無法取得位置，請確認已允許定位權限';
+        console.error(err);
+      },
+      { enableHighAccuracy:true, timeout:8000 }
+    );
+  });
+
+  function showFormMap(coords){
+    formMapEl.style.display = 'block';
+    if(!formMap){
+      formMap = L.map(formMapEl).setView([coords.lat, coords.lng], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(formMap);
+      formMarker = L.marker([coords.lat, coords.lng], { draggable:true }).addTo(formMap);
+      formMarker.on('dragend', () => {
+        const p = formMarker.getLatLng();
+        pendingCoords = { lat:p.lat, lng:p.lng };
+      });
+      formMap.on('click', e => {
+        formMarker.setLatLng(e.latlng);
+        pendingCoords = { lat:e.latlng.lat, lng:e.latlng.lng };
+      });
+    } else {
+      formMap.setView([coords.lat, coords.lng], 16);
+      formMarker.setLatLng([coords.lat, coords.lng]);
+    }
+    setTimeout(() => formMap.invalidateSize(), 100);
+  }
+
+  // ---------- 照片預覽 ----------
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files[0];
+    if(!file){ pendingPhoto = null; previewBox.style.display = 'none'; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingPhoto = e.target.result;
+      previewImg.src = pendingPhoto;
+      previewBox.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- 送出表單 ----------
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    const date = dateInput.value;
+    const sport = sportSelect.value;
+    if(!name || !date) return;
+
+    const records = loadRecords();
+    records.push({
+      id: Date.now(),
+      name, date, sport,
+      photo: pendingPhoto,
+      lat: pendingCoords ? pendingCoords.lat : null,
+      lng: pendingCoords ? pendingCoords.lng : null,
+      createdAt: Date.now()
+    });
+    saveRecords(records);
+
+    form.reset();
+    dateInput.valueAsDate = new Date();
+    sportSelect.value = 'basketball';
+    pendingPhoto = null; pendingCoords = null;
+    previewBox.style.display = 'none';
+    geoStatus.textContent = ''; geoHint.style.display = 'none';
+    formMapEl.style.display = 'none';
+
+    render();
+  });
+
+  // ---------- 篩選 chips ----------
+  function renderFilters(records){
+    const usedSports = [...new Set(records.map(r => r.sport))];
+    filterRow.innerHTML = '';
+    const allChip = document.createElement('div');
+    allChip.className = 'filter-chip' + (activeFilter === 'all' ? ' active' : '');
+    allChip.textContent = '全部';
+    allChip.style.borderColor = activeFilter === 'all' ? 'var(--amber)' : '';
+    allChip.addEventListener('click', () => { activeFilter = 'all'; render(); });
+    filterRow.appendChild(allChip);
+
+    usedSports.forEach(key => {
+      const s = sportOf(key);
+      const chip = document.createElement('div');
+      chip.className = 'filter-chip' + (activeFilter === key ? ' active' : '');
+      chip.textContent = s.label;
+      if(activeFilter === key) chip.style.color = s.color;
+      chip.addEventListener('click', () => { activeFilter = key; render(); });
+      filterRow.appendChild(chip);
+    });
+  }
+
+  // ---------- 總覽地圖 ----------
+  function renderOverviewMap(records){
+    const geoRecords = records.filter(r => r.lat != null && r.lng != null);
+    overviewMarkers.forEach(m => m.remove());
+    overviewMarkers = [];
+
+    if(geoRecords.length === 0){
+      overviewMapEl.style.display = 'none';
+      mapEmpty.style.display = 'block';
+      return;
+    }
+    overviewMapEl.style.display = 'block';
+    mapEmpty.style.display = 'none';
+
+    if(!overviewMap){
+      overviewMap = L.map(overviewMapEl);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(overviewMap);
+    }
+
+    geoRecords.forEach(r => {
+      const s = sportOf(r.sport);
+      const marker = L.circleMarker([r.lat, r.lng], {
+        radius:9, color:'#fff', weight:2, fillColor:s.color, fillOpacity:0.9
+      }).addTo(overviewMap);
+      const photoHtml = r.photo ? `<img src="${r.photo}">` : '';
+      marker.bindPopup(`
+        <div class="popup-card">
+          ${photoHtml}
+          <div class="p-name">${escapeHtml(r.name)}</div>
+          <div class="p-date">${s.label} · ${formatDate(r.date)}</div>
+        </div>
+      `);
+      overviewMarkers.push(marker);
+    });
+
+    const group = L.featureGroup(overviewMarkers);
+    overviewMap.fitBounds(group.getBounds().pad(0.3));
+    if(geoRecords.length === 1) overviewMap.setZoom(15);
+    setTimeout(() => overviewMap.invalidateSize(), 100);
+  }
+
+  // ---------- 主渲染 ----------
+  function render(){
+    const allRecords = loadRecords();
+    renderFilters(allRecords);
+    renderOverviewMap(allRecords);
+
+    const records = activeFilter === 'all'
+      ? allRecords
+      : allRecords.filter(r => r.sport === activeFilter);
+
+    countBadge.textContent = records.length;
+    emptyState.style.display = records.length ? 'none' : 'block';
+    list.innerHTML = '';
+
+    records
+      .slice()
+      .sort((a,b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+      .forEach(record => {
+        const s = sportOf(record.sport);
+        const card = document.createElement('div');
+        card.className = 'checkin-card';
+        const media = record.photo
+          ? `<img src="${record.photo}" alt="${escapeHtml(record.name)}">`
+          : `<div class="no-photo">無照片</div>`;
+        card.innerHTML = `
+          ${media}
+          <div class="checkin-info">
+            <div class="name">${escapeHtml(record.name)}</div>
+            <div class="date">${formatDate(record.date)}</div>
+            <span class="badge" style="background:${s.color}; color:#12261e;">${s.label}</span>
+          </div>
+          <button class="delete-btn" title="刪除" data-id="${record.id}">✕</button>
+        `;
+        list.appendChild(card);
+      });
+
+    list.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const updated = loadRecords().filter(r => String(r.id) !== id);
+        saveRecords(updated);
+        render();
+      });
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>
