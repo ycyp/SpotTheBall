@@ -2,174 +2,265 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SpotTheBall</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <style>
   :root{
     --court-navy:#12261e;
     --line-white:#f4efe3;
     --amber:#e8a33d;
     --amber-dim:#c8862a;
-    --card-bg:#17322650;
+    --card-bg:#17322680;
+    --muted:#a9c2b4;
+    --faint:#7d9a8b;
+    --line:#2c5943;
+    --tabbar-h:64px;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
+  html, body{ height:100%; }
   body{
     background: radial-gradient(ellipse at top, #1c3c2c 0%, var(--court-navy) 60%);
     color:var(--line-white);
     font-family:'Noto Sans TC', sans-serif;
-    min-height:100vh;
-    padding:24px 16px 80px;
+    min-height:100dvh;
   }
-  .wrap{max-width:560px; margin:0 auto;}
+  body.app-on{ overflow:hidden; height:100dvh; }
+  .wrap{ max-width:640px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column; }
+  body.app-on .wrap{ height:100dvh; overflow:hidden; }
 
-  header{text-align:center; margin-bottom:28px;}
+  header{ text-align:center; padding:20px 16px 12px; flex-shrink:0; }
+  body.app-on header{ padding:8px 16px 0; }
   header h1{
-    font-family:'Teko', sans-serif; font-weight:700; font-size:56px;
+    font-family:'Teko', sans-serif; font-weight:700; font-size:44px; line-height:1;
     letter-spacing:2px; color:var(--line-white);
     text-shadow:0 0 18px rgba(232,163,61,0.25);
   }
-  header p{font-size:13px; color:#a9c2b4; letter-spacing:1px;}
+  body.app-on header h1{ font-size:32px; }
+  body.app-on header p, body.app-on .court-line{ display:none; }
+  header p{ font-size:12px; color:var(--muted); letter-spacing:1px; }
   .court-line{
-    height:2px; margin:16px auto 0; max-width:320px;
+    height:2px; margin:12px auto 0; max-width:280px;
     background:repeating-linear-gradient(90deg, var(--line-white) 0 14px, transparent 14px 24px);
     opacity:0.35;
   }
 
   /* ---------- Auth ---------- */
+  #auth-screen{ padding:8px 16px 32px; }
   .auth-card{
-    background:var(--card-bg); border:1px solid #2c5943; border-radius:14px; padding:24px;
+    background:var(--card-bg); border:1px solid var(--line); border-radius:14px; padding:24px;
     display:flex; flex-direction:column; gap:12px; backdrop-filter:blur(6px);
   }
   .auth-card h2{ font-family:'Teko',sans-serif; font-size:28px; text-align:center; letter-spacing:1px; }
   .auth-card input{
-    background:#0f2018; border:1px solid #2c5943; border-radius:8px; padding:11px 12px;
+    background:#0f2018; border:1px solid var(--line); border-radius:8px; padding:11px 12px;
     color:var(--line-white); font-size:15px; font-family:inherit; width:100%;
   }
   .auth-card input:focus{ outline:none; border-color:var(--amber); }
-  .auth-card button{
+  .auth-card button, .primary-btn{
     background:var(--amber); color:#12261e; border:none; border-radius:8px; padding:11px;
     font-family:'Teko',sans-serif; font-size:20px; font-weight:700; cursor:pointer;
   }
-  .auth-card button:hover{ background:#f2b455; }
-  .auth-card button:disabled{ opacity:0.6; cursor:default; }
+  .auth-card button:hover, .primary-btn:hover{ background:#f2b455; }
+  .auth-card button:disabled, .primary-btn:disabled{ opacity:0.6; cursor:default; }
   #auth-error{ color:#e08a72; font-size:13px; min-height:16px; text-align:center; }
-  #auth-toggle{ text-align:center; font-size:13px; color:#a9c2b4; }
+  #auth-toggle{ text-align:center; font-size:13px; color:var(--muted); }
   #auth-toggle span{ color:var(--amber); cursor:pointer; text-decoration:underline; }
 
+  /* ---------- App shell ---------- */
+  #app-screen{ display:none; flex:1; min-height:0; flex-direction:column; }
+  #app-screen.open{ display:flex; }
+
   .user-bar{
-    display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;
-    font-size:13px; color:#a9c2b4;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:0 16px 10px; font-size:12px; color:var(--muted); flex-shrink:0;
   }
   .user-bar button{
-    background:none; border:1px solid #2c5943; color:#a9c2b4; padding:6px 12px;
+    background:none; border:1px solid var(--line); color:var(--muted); padding:5px 11px;
     border-radius:8px; font-size:12px; cursor:pointer; font-family:inherit;
   }
   .user-bar button:hover{ border-color:#d9634c; color:#d9634c; }
 
+  .panels{ flex:1; min-height:0; position:relative; }
+  .panel{
+    display:none; height:100%; overflow:auto;
+    padding:0 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px);
+  }
+  .panel.active{ display:flex; flex-direction:column; }
+  #panel-map.active{ overflow:hidden; min-height:0; }
+
+  .tabbar{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:0; width:100%; max-width:640px;
+    display:flex; background:#0d1c16ee; border-top:1px solid var(--line);
+    backdrop-filter:blur(10px); padding-bottom:env(safe-area-inset-bottom);
+    z-index:40;
+  }
+  .tabbar button{
+    flex:1; background:none; border:none; color:var(--faint);
+    padding:10px 0 8px; font-family:inherit; font-size:11px; letter-spacing:.5px;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  .tabbar button .ico{ font-size:18px; line-height:1; }
+  .tabbar button.active{ color:var(--amber); }
+
+  /* ---------- chips ---------- */
+  .chip-row{ display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; flex-shrink:0; }
+  .chip-row::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex-shrink:0; font-size:12px; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--line); background:#0f2018; color:var(--muted);
+    cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  .chip.active{ border-color:var(--amber); color:var(--amber); }
+  .chip.done-chip.active{ border-color:#7dcea0; color:#7dcea0; }
+  .chip.todo-chip.active{ border-color:#8aa; color:#c5d4cc; }
+
+  .progress-bar{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:13px; color:var(--muted); margin-bottom:8px; flex-shrink:0;
+  }
+  .progress-bar b{ color:var(--amber); font-size:16px; }
+  .legend{ display:flex; gap:12px; font-size:11px; color:var(--faint); }
+  .legend i{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+  .legend .done{ background:var(--amber); }
+  .legend .todo{ background:#bbb; filter:grayscale(1); }
+
+  #overview-map{
+    flex:1; min-height:160px; border-radius:12px; border:1px solid var(--line);
+    overflow:hidden;
+  }
+
+  .selected-card{
+    display:none; margin-top:8px; background:var(--card-bg); border:1px solid var(--line);
+    border-radius:12px; padding:10px 12px; gap:10px; align-items:center; flex-shrink:0;
+  }
+  .selected-card.show{ display:flex; }
+  .selected-card img, .selected-card .ph{
+    width:56px; height:56px; border-radius:8px; object-fit:cover; flex-shrink:0;
+    border:1px solid var(--line);
+  }
+  .selected-card .ph{
+    background:#0f2018; display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:var(--faint); text-align:center;
+  }
+  .selected-card .meta{ flex:1; min-width:0; }
+  .selected-card .name{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .selected-card .sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .selected-card .go{
+    background:var(--amber); color:#12261e; border:none; border-radius:8px;
+    padding:8px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; flex-shrink:0;
+  }
+
+  .stad-list{
+    margin-top:8px;
+    margin-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 6px);
+    height:168px; max-height:168px; overflow:auto;
+    display:flex; flex-direction:column; gap:6px; flex-shrink:0;
+  }
+  .stad-row{
+    display:flex; align-items:center; gap:10px; background:var(--card-bg);
+    border:1px solid var(--line); border-radius:10px; padding:8px 10px; cursor:pointer;
+  }
+  .stad-row.picked{ border-color:var(--amber); }
+  .stad-row .logo{
+    width:28px; height:28px; border-radius:50%; flex-shrink:0; object-fit:contain;
+    background:#fff; border:1px solid var(--line);
+  }
+  .stad-row:not(.conquered) .logo{ filter:grayscale(1) contrast(.9); opacity:.85; }
+  .stad-row .n{ flex:1; min-width:0; }
+  .stad-row .n .t{ font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stad-row .n .s{ font-size:11px; color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stad-row .tag{
+    font-size:10px; color:#12261e; background:var(--amber); border-radius:999px; padding:2px 7px; font-weight:700;
+  }
+  .stad-row .tag.wait{ background:#2a4638; color:var(--muted); }
+
   /* ---------- Form ---------- */
   form{
-    background:var(--card-bg); border:1px solid #2c5943; border-radius:14px;
-    padding:20px; display:flex; flex-direction:column; gap:14px;
-    backdrop-filter:blur(6px);
+    background:var(--card-bg); border:1px solid var(--line); border-radius:14px;
+    padding:18px; display:flex; flex-direction:column; gap:14px;
+    backdrop-filter:blur(6px); margin-top:4px;
   }
   label{
-    font-size:12px; letter-spacing:1.5px; color:var(--amber);
+    font-size:11px; letter-spacing:1.5px; color:var(--amber);
     text-transform:uppercase; display:block; margin-bottom:6px;
   }
-  input[type=text], input[type=date], select{
-    width:100%; background:#0f2018; border:1px solid #2c5943; border-radius:8px;
+  input[type=text], input[type=date], select, textarea{
+    width:100%; background:#0f2018; border:1px solid var(--line); border-radius:8px;
     padding:11px 12px; color:var(--line-white); font-size:15px; font-family:inherit;
   }
-  select{ appearance:none; -webkit-appearance:none;
+  textarea{
+    min-height:148px; line-height:1.65; resize:vertical; font-size:14px;
+  }
+  select{
+    appearance:none; -webkit-appearance:none;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a9c2b4'><path d='M5.25 7.5L10 12.25 14.75 7.5z'/></svg>");
     background-repeat:no-repeat; background-position:right 12px center; background-size:16px;
   }
-  input[type=text]:focus, input[type=date]:focus, select:focus{ outline:none; border-color:var(--amber); }
-  input[type=file]{ color:#a9c2b4; font-size:13px; }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--amber); }
+  input[type=file]{ color:var(--muted); font-size:13px; }
   input[type=file]::file-selector-button{
     background:var(--amber-dim); color:#12261e; border:none; padding:8px 14px;
     border-radius:6px; font-weight:700; cursor:pointer; margin-right:10px;
     font-family:'Noto Sans TC', sans-serif;
   }
-
-  #preview-box{ display:none; margin-top:4px; }
+  #preview-box{ display:none; }
   #preview-box img{
-    width:100%; max-height:220px; object-fit:cover; border-radius:8px; border:1px solid #2c5943;
+    width:100%; max-height:220px; object-fit:cover; border-radius:8px; border:1px solid var(--line);
   }
-
   .geo-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .geo-btn{
-    background:#0f2018; border:1px solid #2c5943; color:var(--line-white);
+    background:#0f2018; border:1px solid var(--line); color:var(--line-white);
     padding:9px 14px; border-radius:8px; font-size:13px; cursor:pointer;
-    display:flex; align-items:center; gap:6px; font-family:inherit;
+    font-family:inherit;
   }
   .geo-btn:hover{ border-color:var(--amber); }
-  .geo-status{ font-size:12px; color:#7d9a8b; }
-  #form-map{
-    display:none; height:180px; border-radius:10px; margin-top:8px;
-    border:1px solid #2c5943; overflow:hidden;
-  }
-  .geo-hint{ font-size:11px; color:#7d9a8b; margin-top:4px; display:none; }
-
+  .geo-status{ font-size:12px; color:var(--faint); }
   button[type=submit]{
     margin-top:4px; background:var(--amber); color:#12261e; border:none; border-radius:8px;
     padding:11px; font-size:22px; font-weight:700; letter-spacing:1px; cursor:pointer;
-    font-family:'Teko', sans-serif; transition:transform .12s ease, background .12s ease;
+    font-family:'Teko', sans-serif;
   }
   button[type=submit]:hover{ background:#f2b455; }
-  button[type=submit]:active{ transform:scale(0.98); }
+  button[type=submit]:disabled{ opacity:0.6; }
 
   .section-title{
-    font-family:'Teko', sans-serif; font-size:26px; letter-spacing:1px; color:var(--line-white);
-    margin:34px 0 14px; display:flex; align-items:center; gap:10px;
+    font-family:'Teko', sans-serif; font-size:24px; letter-spacing:1px;
+    margin:4px 0 10px; display:flex; align-items:center; gap:10px;
   }
   .section-title .count{
-    font-size:14px; font-family:'Noto Sans TC', sans-serif; color:var(--amber);
-    background:#0f2018; border:1px solid #2c5943; padding:2px 10px; border-radius:999px;
-  }
-
-  #overview-map{
-    height:260px; border-radius:12px; border:1px solid #2c5943; margin-bottom:8px; display:none;
-  }
-  #map-empty{
-    text-align:center; color:#7d9a8b; font-size:13px; padding:24px 10px;
-    border:1px dashed #2c5943; border-radius:12px; margin-bottom:8px;
+    font-size:13px; font-family:'Noto Sans TC', sans-serif; color:var(--amber);
+    background:#0f2018; border:1px solid var(--line); padding:2px 10px; border-radius:999px;
   }
 
   #empty-state{
-    text-align:center; color:#7d9a8b; font-size:14px; padding:40px 10px;
-    border:1px dashed #2c5943; border-radius:12px;
+    text-align:center; color:var(--faint); font-size:14px; padding:40px 10px;
+    border:1px dashed var(--line); border-radius:12px;
   }
-
-  .filter-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
-  .filter-chip{
-    font-size:12px; padding:6px 12px; border-radius:999px; border:1px solid #2c5943;
-    background:#0f2018; color:#a9c2b4; cursor:pointer; user-select:none;
-  }
-  .filter-chip.active{ border-color:var(--amber); color:var(--amber); }
-
   .checkin-list{ display:flex; flex-direction:column; gap:12px; }
   .checkin-card{
-    display:flex; gap:12px; background:var(--card-bg); border:1px solid #2c5943;
-    border-radius:12px; padding:12px; align-items:center; animation:rise .25s ease;
+    display:flex; flex-direction:column; gap:8px; background:var(--card-bg); border:1px solid var(--line);
+    border-radius:12px; padding:12px;
   }
-  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
-  .checkin-card img{
-    width:72px; height:72px; object-fit:cover; border-radius:8px; flex-shrink:0; border:1px solid #2c5943;
+  .checkin-main{ display:flex; gap:12px; align-items:center; }
+  .checkin-card img.photo{
+    width:72px; height:72px; object-fit:cover; border-radius:8px; flex-shrink:0; border:1px solid var(--line);
   }
   .checkin-card .no-photo{
     width:72px; height:72px; border-radius:8px; flex-shrink:0; background:#0f2018;
-    border:1px dashed #2c5943; display:flex; align-items:center; justify-content:center;
+    border:1px dashed var(--line); display:flex; align-items:center; justify-content:center;
     font-size:10px; color:#5d7c6d; text-align:center; padding:2px;
   }
   .checkin-info{ flex:1; min-width:0; }
   .checkin-info .name{
-    font-size:16px; font-weight:700; color:var(--line-white);
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .checkin-info .date{ font-size:13px; color:var(--amber); margin-top:2px; }
   .badge{
@@ -177,27 +268,40 @@
     border-radius:999px; display:inline-block; margin-top:6px; font-weight:700;
   }
   .delete-btn{
-    background:none; border:1px solid #3a5c4c; color:#a9c2b4; width:30px; height:30px;
+    background:none; border:1px solid #3a5c4c; color:var(--muted); width:30px; height:30px;
     border-radius:8px; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0;
   }
   .delete-btn:hover{ border-color:#d9634c; color:#d9634c; }
 
-  .leaflet-popup-content{ font-family:'Noto Sans TC', sans-serif; }
-  .popup-card{ text-align:center; min-width:120px; }
-  .popup-card img{ width:100%; max-height:100px; object-fit:cover; border-radius:6px; margin-bottom:6px; }
+  .checkin-note{
+    margin:0; font-size:12px; color:var(--muted); white-space:pre-wrap; font-family:inherit;
+    background:#0f2018; border:1px solid var(--line); border-radius:8px; padding:8px 10px; line-height:1.55;
+  }
+  .stad-marker{ background:none !important; border:none !important; }
+  .logo-pin{
+    width:34px; height:34px; border-radius:50%; background:#fff;
+    box-shadow:0 1px 5px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center;
+    border:2px solid #fff; overflow:hidden;
+  }
+  .logo-pin.done{ border-color:var(--amber); }
+  .logo-pin.todo{ border-color:#c8c8c8; background:#ececec; }
+  .logo-pin img{ width:28px; height:28px; object-fit:contain; display:block; }
+  .logo-pin.todo img{ filter:grayscale(1) contrast(.92) brightness(1.05); opacity:.88; }
+
+  .leaflet-popup-content{ font-family:'Noto Sans TC', sans-serif; margin:8px 10px !important; }
+  .popup-card{ min-width:130px; }
   .popup-card .p-name{ font-weight:700; font-size:13px; }
-  .popup-card .p-date{ font-size:11px; color:#666; }
+  .popup-card .p-sub{ font-size:11px; color:#666; margin-top:2px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>SpotTheBall</h1>
-    <p>COURT CHECK-IN LOG</p>
+    <p>STADIUM PASSPORT</p>
     <div class="court-line"></div>
   </header>
 
-  <!-- ---------- 登入畫面 ---------- -->
   <div id="auth-screen">
     <div class="auth-card">
       <h2 id="auth-title">登入</h2>
@@ -209,51 +313,80 @@
     </div>
   </div>
 
-  <!-- ---------- App 主畫面（登入後才顯示） ---------- -->
-  <div id="app-screen" style="display:none;">
+  <div id="app-screen">
     <div class="user-bar">
       <span id="user-email"></span>
       <button id="logout-btn">登出</button>
     </div>
 
-    <form id="checkin-form">
-      <div>
-        <label for="sport-type">運動類型</label>
-        <select id="sport-type"></select>
-      </div>
-      <div>
-        <label for="court-name">球場名字</label>
-        <input type="text" id="court-name" placeholder="例如：大安運動中心 3 號場" required>
-      </div>
-      <div>
-        <label for="checkin-date">日期</label>
-        <input type="date" id="checkin-date" required>
-      </div>
-      <div>
-        <label>位置(選填)</label>
-        <div class="geo-row">
-          <button type="button" class="geo-btn" id="geo-btn">📍 取得目前位置</button>
-          <span class="geo-status" id="geo-status"></span>
+    <div class="panels">
+      <section class="panel active" id="panel-map">
+        <div class="chip-row" id="league-chips"></div>
+        <div class="chip-row" id="status-chips">
+          <div class="chip active" data-status="all">全部場館</div>
+          <div class="chip done-chip" data-status="done">已攻略</div>
+          <div class="chip todo-chip" data-status="todo">尚未攻略</div>
         </div>
-        <div class="geo-hint" id="geo-hint">拖曳圖釘可微調位置</div>
-        <div id="form-map"></div>
-      </div>
-      <div>
-        <label for="photo-input">照片（僅存於此裝置）</label>
-        <input type="file" id="photo-input" accept="image/*">
-        <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
-      </div>
-      <button type="submit">打卡</button>
-    </form>
+        <div class="progress-bar">
+          <div>已攻略 <b id="progress-num">0 / 0</b></div>
+          <div class="legend">
+            <span><i class="done"></i>彩色＝已攻略</span>
+            <span><i class="todo"></i>灰色＝尚未攻略</span>
+          </div>
+        </div>
+        <div id="overview-map"></div>
+        <div class="selected-card" id="selected-card"></div>
+        <div class="stad-list" id="stad-list"></div>
+      </section>
 
-    <div class="section-title">總覽地圖</div>
-    <div id="overview-map"></div>
-    <div id="map-empty">還沒有帶定位的打卡紀錄</div>
+      <section class="panel" id="panel-checkin">
+        <div class="section-title">球場打卡</div>
+        <form id="checkin-form">
+          <div>
+            <label for="league-select">聯盟</label>
+            <select id="league-select"></select>
+          </div>
+          <div>
+            <label for="stadium-select">球場</label>
+            <select id="stadium-select" required></select>
+          </div>
+          <div>
+            <label for="checkin-date">日期</label>
+            <input type="date" id="checkin-date" required>
+          </div>
+          <div>
+            <label for="checkin-note">記事</label>
+            <textarea id="checkin-note" spellcheck="false"></textarea>
+          </div>
+          <div>
+            <label>附近球場（選填）</label>
+            <div class="geo-row">
+              <button type="button" class="geo-btn" id="geo-btn">📍 找出最近的球場</button>
+              <span class="geo-status" id="geo-status"></span>
+            </div>
+          </div>
+          <div>
+            <label for="photo-input">現場照片（僅存於此裝置）</label>
+            <input type="file" id="photo-input" accept="image/*">
+            <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
+          </div>
+          <button type="submit">打卡</button>
+        </form>
+      </section>
 
-    <div class="section-title">打卡紀錄 <span class="count" id="record-count">0</span></div>
-    <div class="filter-row" id="filter-row"></div>
-    <div id="empty-state">還沒有任何打卡紀錄，開始你的第一筆吧！</div>
-    <div class="checkin-list" id="checkin-list"></div>
+      <section class="panel" id="panel-log">
+        <div class="section-title">打卡紀錄 <span class="count" id="record-count">0</span></div>
+        <div class="chip-row" id="log-league-chips"></div>
+        <div id="empty-state">還沒有任何打卡紀錄，開始你的第一座球場吧！</div>
+        <div class="checkin-list" id="checkin-list"></div>
+      </section>
+    </div>
+
+    <nav class="tabbar">
+      <button class="active" data-tab="map"><span class="ico">🗺</span>地圖</button>
+      <button data-tab="checkin"><span class="ico">📍</span>打卡</button>
+      <button data-tab="log"><span class="ico">📒</span>紀錄</button>
+    </nav>
   </div>
 </div>
 
@@ -267,6 +400,12 @@
     getFirestore, collection, addDoc, deleteDoc, doc,
     query, where, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    LEAGUES, STADIUMS, stadiumById, stadiumsForLeague, leagueLabel, primaryLeague
+  } from "./stadiums.js";
+  import {
+    stadiumTeam, teamLogoSrc, badgeDataUri, stadiumHomeName
+  } from "./teams.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDPtIKbS-GA-zjK40kSM2us7iRwxLN8iak",
@@ -282,16 +421,6 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  const SPORTS = {
-    basketball: { label:'籃球場', color:'#e8823d' },
-    baseball:   { label:'棒球場', color:'#d9634c' },
-    tennis:     { label:'網球場', color:'#b5d94a' },
-    badminton:  { label:'羽球場', color:'#a78bd9' },
-    soccer:     { label:'足球場', color:'#4a90d9' },
-    other:      { label:'其他場館', color:'#8b9d94' }
-  };
-
-  // ---------- DOM refs ----------
   const authScreen = document.getElementById('auth-screen');
   const appScreen = document.getElementById('app-screen');
   const authEmail = document.getElementById('auth-email');
@@ -304,9 +433,10 @@
   const logoutBtn = document.getElementById('logout-btn');
 
   const form = document.getElementById('checkin-form');
-  const sportSelect = document.getElementById('sport-type');
-  const nameInput = document.getElementById('court-name');
+  const leagueSelect = document.getElementById('league-select');
+  const stadiumSelect = document.getElementById('stadium-select');
   const dateInput = document.getElementById('checkin-date');
+  const noteInput = document.getElementById('checkin-note');
   const photoInput = document.getElementById('photo-input');
   const previewBox = document.getElementById('preview-box');
   const previewImg = document.getElementById('preview-img');
@@ -315,30 +445,69 @@
   const countBadge = document.getElementById('record-count');
   const geoBtn = document.getElementById('geo-btn');
   const geoStatus = document.getElementById('geo-status');
-  const geoHint = document.getElementById('geo-hint');
-  const formMapEl = document.getElementById('form-map');
-  const filterRow = document.getElementById('filter-row');
   const overviewMapEl = document.getElementById('overview-map');
-  const mapEmpty = document.getElementById('map-empty');
+  const leagueChips = document.getElementById('league-chips');
+  const statusChips = document.getElementById('status-chips');
+  const logLeagueChips = document.getElementById('log-league-chips');
+  const progressNum = document.getElementById('progress-num');
+  const stadList = document.getElementById('stad-list');
+  const selectedCard = document.getElementById('selected-card');
 
   let pendingPhoto = null;
-  let pendingCoords = null;
-  let activeFilter = 'all';
-  let formMap = null, formMarker = null;
-  let overviewMap = null, overviewMarkers = [];
+  let mapLeague = 'cpbl';
+  let mapStatus = 'all';
+  let logLeague = 'all';
+  let selectedStadiumId = null;
+  let overviewMap = null;
+  let markerLayer = null;
   let currentUser = null;
   let currentRecords = [];
   let unsubscribeRecords = null;
   let isSignup = false;
+  let activeTab = 'map';
+  let lastFittedKey = '';
 
-  Object.entries(SPORTS).forEach(([key, s]) => {
-    const opt = document.createElement('option');
-    opt.value = key; opt.textContent = s.label;
-    sportSelect.appendChild(opt);
-  });
   dateInput.valueAsDate = new Date();
 
-  // ---------- 本機照片（不上雲端） ----------
+  Object.values(LEAGUES).forEach(lg => {
+    const opt = document.createElement('option');
+    opt.value = lg.id; opt.textContent = `${lg.label}（${lg.sport}）`;
+    leagueSelect.appendChild(opt);
+  });
+  leagueSelect.value = 'cpbl';
+  fillStadiumSelect('cpbl');
+
+  function fillStadiumSelect(leagueId, preferredId){
+    const venues = stadiumsForLeague(leagueId);
+    stadiumSelect.innerHTML = venues.map(s =>
+      `<option value="${s.id}">${s.name}｜${s.city}</option>`
+    ).join('');
+    if(preferredId && venues.some(s => s.id === preferredId)){
+      stadiumSelect.value = preferredId;
+    }
+    applyNoteTemplate(false);
+  }
+
+  leagueSelect.addEventListener('change', () => fillStadiumSelect(leagueSelect.value));
+  stadiumSelect.addEventListener('change', () => applyNoteTemplate(false));
+
+  function noteTemplate(homeTeam){
+    return `客場球隊 vs ${homeTeam}\n座位:\n比數:\n戰況:\n`;
+  }
+
+  function isPristineNote(value){
+    const cur = (value || '').replace(/\r/g, '');
+    return !cur.trim() || /^客場球隊 vs .+\n座位:\n比數:\n戰況:\s*$/.test(cur);
+  }
+
+  function applyNoteTemplate(force){
+    const stad = stadiumById(stadiumSelect.value);
+    const home = stad ? stadiumHomeName(stad, leagueSelect.value) : '主場球隊';
+    if(force || isPristineNote(noteInput.value)){
+      noteInput.value = noteTemplate(home);
+    }
+  }
+
   function getLocalPhoto(id){ try{ return localStorage.getItem('photo:' + id); }catch(e){ return null; } }
   function setLocalPhoto(id, dataUrl){ try{ localStorage.setItem('photo:' + id, dataUrl); }catch(e){ console.error(e); } }
   function removeLocalPhoto(id){ try{ localStorage.removeItem('photo:' + id); }catch(e){} }
@@ -349,12 +518,51 @@
   }
   function escapeHtml(str){
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str == null ? '' : String(str);
     return div.innerHTML;
   }
-  function sportOf(key){ return SPORTS[key] || SPORTS.other; }
+  function conqueredIds(){
+    return new Set(currentRecords.map(r => r.stadiumId).filter(Boolean));
+  }
+  function latestCheckin(stadiumId){
+    return currentRecords
+      .filter(r => r.stadiumId === stadiumId)
+      .sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0))[0];
+  }
+  function leagueColor(id){
+    return LEAGUES[id]?.color || '#8b9d94';
+  }
+  function recordTitle(record){
+    const stad = stadiumById(record.stadiumId);
+    return stad ? stad.name : (record.name || '未知球場');
+  }
 
-  // ---------- 登入 / 註冊 ----------
+  function compressImage(dataUrl){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1280;
+        const scale = Math.min(1, max / img.width, max / img.height);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  function haversineKm(a, b){
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  // ---------- Auth ----------
   function translateAuthError(code){
     const map = {
       'auth/email-already-in-use': '這個 Email 已經註冊過了，請直接登入',
@@ -384,11 +592,8 @@
     if(!email || !password){ authError.textContent = '請輸入 Email 和密碼'; return; }
     authSubmit.disabled = true;
     try{
-      if(isSignup){
-        await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
+      if(isSignup) await createUserWithEmailAndPassword(auth, email, password);
+      else await signInWithEmailAndPassword(auth, email, password);
     }catch(err){
       authError.textContent = translateAuthError(err.code);
     }finally{
@@ -398,17 +603,38 @@
 
   logoutBtn.addEventListener('click', () => signOut(auth));
 
+  function bootPreview(){
+    currentUser = { uid:'preview', email:'preview@local' };
+    authScreen.style.display = 'none';
+    appScreen.classList.add('open');
+    document.body.classList.add('app-on');
+    userEmailEl.textContent = '預覽模式';
+    currentRecords = [
+      {
+        id:'preview-1', stadiumId:'cpbl-tianmu', league:'cpbl', name:'天母棒球場',
+        date:'2026-04-03',
+        note:'客場球隊 vs 味全龍\n座位: 內野 13 區\n比數: 5-3\n戰況: 九局下逆轉'
+      }
+    ];
+    requestAnimationFrame(() => { initMap(); render(); });
+  }
+
   onAuthStateChanged(auth, user => {
     currentUser = user;
     if(user){
       authScreen.style.display = 'none';
-      appScreen.style.display = 'block';
+      appScreen.classList.add('open');
+      document.body.classList.add('app-on');
       userEmailEl.textContent = user.email;
       subscribeToRecords(user.uid);
+      requestAnimationFrame(() => { initMap(); render(); });
+    } else if(new URLSearchParams(location.search).has('preview')){
+      bootPreview();
     } else {
       if(unsubscribeRecords){ unsubscribeRecords(); unsubscribeRecords = null; }
       currentRecords = [];
-      appScreen.style.display = 'none';
+      appScreen.classList.remove('open');
+      document.body.classList.remove('app-on');
       authScreen.style.display = 'block';
       authEmail.value = ''; authPassword.value = '';
     }
@@ -425,87 +651,273 @@
     });
   }
 
-  // ---------- 定位 ----------
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tabbar button').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  function switchTab(tab){
+    activeTab = tab;
+    document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+    if(tab === 'map' && overviewMap){
+      setTimeout(() => overviewMap.invalidateSize(), 80);
+    }
+  }
+
+  // ---------- Map chips ----------
+  function renderLeagueChips(container, current, onPick, includeAll){
+    container.innerHTML = '';
+    if(includeAll){
+      const all = document.createElement('div');
+      all.className = 'chip' + (current === 'all' ? ' active' : '');
+      all.textContent = '全部聯盟';
+      all.addEventListener('click', () => onPick('all'));
+      container.appendChild(all);
+    }
+    Object.values(LEAGUES).forEach(lg => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (current === lg.id ? ' active' : '');
+      chip.textContent = lg.label;
+      if(current === lg.id) chip.style.color = lg.color;
+      chip.addEventListener('click', () => onPick(lg.id));
+      container.appendChild(chip);
+    });
+  }
+
+  statusChips.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      mapStatus = chip.dataset.status;
+      statusChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === chip));
+      renderMap();
+      renderStadList();
+    });
+  });
+
+  // ---------- Map ----------
+  function initMap(){
+    if(overviewMap) return;
+    overviewMap = L.map(overviewMapEl, { zoomControl:true, attributionControl:true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(overviewMap);
+    overviewMap.setView(LEAGUES.cpbl.view, LEAGUES.cpbl.zoom);
+  }
+
+  function logoPinIcon(stadium, conquered){
+    const team = stadiumTeam(stadium, mapLeague);
+    const src = teamLogoSrc(team);
+    const fallback = badgeDataUri(team || { abbr:'?', color:'#5d7c6d' });
+    const cls = conquered ? 'done' : 'todo';
+    return L.divIcon({
+      className: 'stad-marker',
+      html: `<span class="logo-pin ${cls}"><img src="${src}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${fallback}'"></span>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+  }
+
+  function visibleStadiums(){
+    const done = conqueredIds();
+    return stadiumsForLeague(mapLeague).filter(s => {
+      const conquered = done.has(s.id);
+      if(mapStatus === 'done') return conquered;
+      if(mapStatus === 'todo') return !conquered;
+      return true;
+    });
+  }
+
+  function renderMap(){
+    if(!overviewMap) return;
+    if(markerLayer){ overviewMap.removeLayer(markerLayer); }
+    markerLayer = L.markerClusterGroup({
+      maxClusterRadius: 22,
+      disableClusteringAtZoom: mapLeague === 'all' ? 3 : 5,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false
+    });
+
+    const done = conqueredIds();
+    const venues = visibleStadiums();
+    venues.forEach(s => {
+      const conquered = done.has(s.id);
+      const marker = L.marker([s.lat, s.lng], { icon: logoPinIcon(s, conquered) });
+      marker.on('click', () => selectStadium(s.id, false));
+      marker.bindPopup(`
+        <div class="popup-card">
+          <div class="p-name">${escapeHtml(s.name)}</div>
+          <div class="p-sub">${escapeHtml(s.city)} · ${escapeHtml(s.teams)}</div>
+          <div class="p-sub">${conquered ? '已攻略' : '尚未攻略'}</div>
+        </div>
+      `);
+      markerLayer.addLayer(marker);
+    });
+    overviewMap.addLayer(markerLayer);
+
+    const total = stadiumsForLeague(mapLeague).length;
+    const got = stadiumsForLeague(mapLeague).filter(s => done.has(s.id)).length;
+    progressNum.textContent = `${got} / ${total}`;
+
+    const fitKey = mapLeague + ':' + mapStatus + ':' + venues.length;
+    if(fitKey !== lastFittedKey){
+      lastFittedKey = fitKey;
+      if(venues.length){
+        const bounds = L.latLngBounds(venues.map(s => [s.lat, s.lng]));
+        overviewMap.fitBounds(bounds.pad(0.18));
+        if(venues.length === 1) overviewMap.setZoom(12);
+      } else if(mapLeague !== 'all' && LEAGUES[mapLeague]){
+        overviewMap.setView(LEAGUES[mapLeague].view, LEAGUES[mapLeague].zoom);
+      } else {
+        overviewMap.setView([30, 10], 2);
+      }
+    }
+    setTimeout(() => overviewMap.invalidateSize(), 80);
+  }
+
+  function selectStadium(id, pan){
+    selectedStadiumId = id;
+    const s = stadiumById(id);
+    if(!s) return;
+    if(pan && overviewMap){
+      overviewMap.setView([s.lat, s.lng], Math.max(overviewMap.getZoom(), 11));
+    }
+    renderSelectedCard();
+    renderStadList();
+  }
+
+  function renderSelectedCard(){
+    const s = stadiumById(selectedStadiumId);
+    if(!s){ selectedCard.classList.remove('show'); selectedCard.innerHTML = ''; return; }
+    const rec = latestCheckin(s.id);
+    const photo = rec ? getLocalPhoto(rec.id) : null;
+    const conquered = !!rec;
+    const media = photo
+      ? `<img src="${photo}" alt="">`
+      : `<div class="ph">${conquered ? '此裝置<br>無照片' : '尚未<br>打卡'}</div>`;
+    selectedCard.innerHTML = `
+      ${media}
+      <div class="meta">
+        <div class="name">${escapeHtml(s.name)}</div>
+        <div class="sub">${escapeHtml(s.city)} · ${escapeHtml(s.teams)}</div>
+        <div class="sub">${conquered ? '已攻略 · ' + formatDate(rec.date) : '尚未攻略'}</div>
+      </div>
+      <button class="go" type="button">打卡這座</button>
+    `;
+    selectedCard.classList.add('show');
+    selectedCard.querySelector('.go').addEventListener('click', () => startCheckin(s));
+  }
+
+  function startCheckin(stadium){
+    const league = stadium.leagues.includes(mapLeague) ? mapLeague : stadium.leagues[0];
+    leagueSelect.value = league;
+    fillStadiumSelect(league, stadium.id);
+    applyNoteTemplate(true);
+    switchTab('checkin');
+  }
+
+  function renderStadList(){
+    const done = conqueredIds();
+    const venues = visibleStadiums();
+    stadList.innerHTML = venues.map(s => {
+      const conquered = done.has(s.id);
+      const team = stadiumTeam(s, mapLeague);
+      const src = teamLogoSrc(team);
+      const fallback = badgeDataUri(team || { abbr:'?', color:'#5d7c6d' });
+      return `
+        <div class="stad-row ${conquered ? 'conquered' : ''} ${s.id === selectedStadiumId ? 'picked' : ''}" data-id="${s.id}">
+          <img class="logo" src="${src}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${fallback}'">
+          <div class="n">
+            <div class="t">${escapeHtml(s.name)}</div>
+            <div class="s">${escapeHtml(s.city)} · ${escapeHtml(s.teams)}</div>
+          </div>
+          <span class="tag ${conquered ? '' : 'wait'}">${conquered ? '已攻略' : '未攻略'}</span>
+        </div>
+      `;
+    }).join('');
+    stadList.querySelectorAll('.stad-row').forEach(row => {
+      row.addEventListener('click', () => selectStadium(row.dataset.id, true));
+    });
+  }
+
+  // ---------- Geo nearest ----------
   geoBtn.addEventListener('click', () => {
     if(!navigator.geolocation){ geoStatus.textContent = '此瀏覽器不支援定位'; return; }
     geoStatus.textContent = '定位中…';
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        pendingCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        geoStatus.textContent = '已取得位置';
-        geoHint.style.display = 'block';
-        showFormMap(pendingCoords);
-      },
-      err => {
-        geoStatus.textContent = '無法取得位置，請確認已允許定位權限';
-        console.error(err);
-      },
-      { enableHighAccuracy:true, timeout:8000 }
-    );
+    navigator.geolocation.getCurrentPosition(pos => {
+      const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const ranked = STADIUMS
+        .map(s => ({ s, km: haversineKm(here, s) }))
+        .sort((a,b) => a.km - b.km);
+      const nearest = ranked[0];
+      if(!nearest){ geoStatus.textContent = '找不到球場'; return; }
+      const league = nearest.s.leagues[0];
+      leagueSelect.value = league;
+      fillStadiumSelect(league, nearest.s.id);
+      const km = nearest.km < 1 ? `${Math.round(nearest.km * 1000)} 公尺` : `${nearest.km.toFixed(1)} 公里`;
+      geoStatus.textContent = `最近：${nearest.s.name}（${km}）`;
+      applyNoteTemplate(false);
+    }, err => {
+      geoStatus.textContent = '無法取得位置，請確認已允許定位權限';
+      console.error(err);
+    }, { enableHighAccuracy:true, timeout:8000 });
   });
 
-  function showFormMap(coords){
-    formMapEl.style.display = 'block';
-    if(!formMap){
-      formMap = L.map(formMapEl).setView([coords.lat, coords.lng], 16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(formMap);
-      formMarker = L.marker([coords.lat, coords.lng], { draggable:true }).addTo(formMap);
-      formMarker.on('dragend', () => {
-        const p = formMarker.getLatLng();
-        pendingCoords = { lat:p.lat, lng:p.lng };
-      });
-      formMap.on('click', e => {
-        formMarker.setLatLng(e.latlng);
-        pendingCoords = { lat:e.latlng.lat, lng:e.latlng.lng };
-      });
-    } else {
-      formMap.setView([coords.lat, coords.lng], 16);
-      formMarker.setLatLng([coords.lat, coords.lng]);
-    }
-    setTimeout(() => formMap.invalidateSize(), 100);
-  }
-
-  // ---------- 照片預覽 ----------
-  photoInput.addEventListener('change', () => {
+  // ---------- Photo ----------
+  photoInput.addEventListener('change', async () => {
     const file = photoInput.files[0];
     if(!file){ pendingPhoto = null; previewBox.style.display = 'none'; return; }
     const reader = new FileReader();
-    reader.onload = e => {
-      pendingPhoto = e.target.result;
+    reader.onload = async e => {
+      pendingPhoto = await compressImage(e.target.result);
       previewImg.src = pendingPhoto;
       previewBox.style.display = 'block';
     };
     reader.readAsDataURL(file);
   });
 
-  // ---------- 送出打卡 ----------
+  // ---------- Submit ----------
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    if(!currentUser) return;
-    const name = nameInput.value.trim();
+    if(!currentUser || currentUser.uid === 'preview'){
+      if(currentUser && currentUser.uid === 'preview'){
+        alert('預覽模式不能寫入雲端，請先登入後再打卡');
+      }
+      return;
+    }
+    const stadiumId = stadiumSelect.value;
+    const league = leagueSelect.value;
     const date = dateInput.value;
-    const sport = sportSelect.value;
-    if(!name || !date) return;
+    const note = noteInput.value.trim();
+    const stad = stadiumById(stadiumId);
+    if(!stadiumId || !date || !stad) return;
 
     const submitBtn = form.querySelector('button[type=submit]');
     submitBtn.disabled = true;
     try{
       const docRef = await addDoc(collection(db, 'checkins'), {
         uid: currentUser.uid,
-        name, date, sport,
-        lat: pendingCoords ? pendingCoords.lat : null,
-        lng: pendingCoords ? pendingCoords.lng : null,
+        stadiumId,
+        league,
+        name: stad.name,
+        date,
+        note,
+        lat: stad.lat,
+        lng: stad.lng,
         createdAt: Date.now()
       });
       if(pendingPhoto) setLocalPhoto(docRef.id, pendingPhoto);
 
       form.reset();
       dateInput.valueAsDate = new Date();
-      sportSelect.value = 'basketball';
-      pendingPhoto = null; pendingCoords = null;
+      leagueSelect.value = league;
+      fillStadiumSelect(league, stadiumId);
+      applyNoteTemplate(true);
+      pendingPhoto = null;
       previewBox.style.display = 'none';
-      geoStatus.textContent = ''; geoHint.style.display = 'none';
-      formMapEl.style.display = 'none';
+      geoStatus.textContent = '';
+      mapLeague = league;
+      selectedStadiumId = stadiumId;
+      switchTab('map');
     }catch(err){
       alert('打卡失敗：' + err.message);
       console.error(err);
@@ -514,75 +926,15 @@
     }
   });
 
-  // ---------- 篩選 chips ----------
-  function renderFilters(records){
-    const usedSports = [...new Set(records.map(r => r.sport))];
-    filterRow.innerHTML = '';
-    const allChip = document.createElement('div');
-    allChip.className = 'filter-chip' + (activeFilter === 'all' ? ' active' : '');
-    allChip.textContent = '全部';
-    allChip.addEventListener('click', () => { activeFilter = 'all'; render(); });
-    filterRow.appendChild(allChip);
-
-    usedSports.forEach(key => {
-      const s = sportOf(key);
-      const chip = document.createElement('div');
-      chip.className = 'filter-chip' + (activeFilter === key ? ' active' : '');
-      chip.textContent = s.label;
-      if(activeFilter === key) chip.style.color = s.color;
-      chip.addEventListener('click', () => { activeFilter = key; render(); });
-      filterRow.appendChild(chip);
-    });
-  }
-
-  // ---------- 總覽地圖 ----------
-  function renderOverviewMap(records){
-    const geoRecords = records.filter(r => r.lat != null && r.lng != null);
-    overviewMarkers.forEach(m => m.remove());
-    overviewMarkers = [];
-
-    if(geoRecords.length === 0){
-      overviewMapEl.style.display = 'none';
-      mapEmpty.style.display = 'block';
-      return;
-    }
-    overviewMapEl.style.display = 'block';
-    mapEmpty.style.display = 'none';
-
-    if(!overviewMap){
-      overviewMap = L.map(overviewMapEl);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(overviewMap);
-    }
-
-    geoRecords.forEach(r => {
-      const s = sportOf(r.sport);
-      const marker = L.circleMarker([r.lat, r.lng], { radius:9, color:'#fff', weight:2, fillColor:s.color, fillOpacity:0.9 }).addTo(overviewMap);
-      const photo = getLocalPhoto(r.id);
-      const photoHtml = photo ? `<img src="${photo}">` : '';
-      marker.bindPopup(`
-        <div class="popup-card">
-          ${photoHtml}
-          <div class="p-name">${escapeHtml(r.name)}</div>
-          <div class="p-date">${s.label} · ${formatDate(r.date)}</div>
-        </div>
-      `);
-      overviewMarkers.push(marker);
-    });
-
-    const group = L.featureGroup(overviewMarkers);
-    overviewMap.fitBounds(group.getBounds().pad(0.3));
-    if(geoRecords.length === 1) overviewMap.setZoom(15);
-    setTimeout(() => overviewMap.invalidateSize(), 100);
-  }
-
-  // ---------- 主渲染 ----------
-  function render(){
-    renderFilters(currentRecords);
-    renderOverviewMap(currentRecords);
-
-    const records = activeFilter === 'all'
+  // ---------- Log list ----------
+  function renderLog(){
+    const records = logLeague === 'all'
       ? currentRecords
-      : currentRecords.filter(r => r.sport === activeFilter);
+      : currentRecords.filter(r => {
+          if(r.league === logLeague) return true;
+          const stad = stadiumById(r.stadiumId);
+          return stad && stad.leagues.includes(logLeague);
+        });
 
     countBadge.textContent = records.length;
     emptyState.style.display = records.length ? 'none' : 'block';
@@ -590,23 +942,31 @@
 
     records
       .slice()
-      .sort((a,b) => b.date.localeCompare(a.date) || (b.createdAt||0) - (a.createdAt||0))
+      .sort((a,b) => (b.date||'').localeCompare(a.date||'') || (b.createdAt||0) - (a.createdAt||0))
       .forEach(record => {
-        const s = sportOf(record.sport);
+        const stad = stadiumById(record.stadiumId);
+        const lgId = record.league || stad?.leagues[0] || 'cpbl';
+        const lg = LEAGUES[lgId];
         const photo = getLocalPhoto(record.id);
         const card = document.createElement('div');
         card.className = 'checkin-card';
         const media = photo
-          ? `<img src="${photo}" alt="${escapeHtml(record.name)}">`
+          ? `<img class="photo" src="${photo}" alt="${escapeHtml(recordTitle(record))}">`
           : `<div class="no-photo">此裝置<br>無照片</div>`;
+        const noteHtml = record.note
+          ? `<pre class="checkin-note">${escapeHtml(record.note)}</pre>`
+          : '';
         card.innerHTML = `
-          ${media}
-          <div class="checkin-info">
-            <div class="name">${escapeHtml(record.name)}</div>
-            <div class="date">${formatDate(record.date)}</div>
-            <span class="badge" style="background:${s.color}; color:#12261e;">${s.label}</span>
+          <div class="checkin-main">
+            ${media}
+            <div class="checkin-info">
+              <div class="name">${escapeHtml(recordTitle(record))}</div>
+              <div class="date">${record.date ? formatDate(record.date) : ''}</div>
+              <span class="badge" style="background:${lg ? lg.color : '#8b9d94'};">${escapeHtml(lg ? lg.label : '')}</span>
+            </div>
+            <button class="delete-btn" title="刪除" data-id="${record.id}">✕</button>
           </div>
-          <button class="delete-btn" title="刪除" data-id="${record.id}">✕</button>
+          ${noteHtml}
         `;
         list.appendChild(card);
       });
@@ -622,6 +982,29 @@
         }
       });
     });
+  }
+
+  function onMapLeague(id){
+    mapLeague = id;
+    renderLeagueChips(leagueChips, mapLeague, onMapLeague, true);
+    renderMap();
+    renderStadList();
+    renderSelectedCard();
+  }
+
+  function onLogLeague(id){
+    logLeague = id;
+    renderLeagueChips(logLeagueChips, logLeague, onLogLeague, true);
+    renderLog();
+  }
+
+  function render(){
+    renderLeagueChips(leagueChips, mapLeague, onMapLeague, true);
+    renderLeagueChips(logLeagueChips, logLeague, onLogLeague, true);
+    renderMap();
+    renderStadList();
+    renderSelectedCard();
+    renderLog();
   }
 </script>
 </body>
