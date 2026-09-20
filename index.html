@@ -302,11 +302,30 @@
     font-size:10px; letter-spacing:.5px; color:#12261e; padding:2px 8px;
     border-radius:999px; display:inline-block; margin-top:6px; font-weight:700;
   }
+  .card-btns{ display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .edit-btn{
+    background:none; border:1px solid var(--line); color:var(--amber);
+    border-radius:8px; padding:6px 8px; font-size:11px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+  .edit-btn:hover{ border-color:var(--amber); }
   .delete-btn{
-    background:none; border:1px solid #3a5c4c; color:var(--muted); width:30px; height:30px;
+    background:none; border:1px solid #3a5c4c; color:var(--muted); width:100%; height:30px;
     border-radius:8px; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0;
   }
   .delete-btn:hover{ border-color:#d9634c; color:#d9634c; }
+  .form-actions{ display:flex; gap:8px; }
+  .form-actions button[type=submit]{ flex:1; margin-top:0; }
+  #checkin-cancel{
+    flex:0 0 auto; background:#0f2018; border:1px solid var(--line); color:var(--muted);
+    border-radius:8px; padding:11px 14px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
+  #checkin-cancel:hover{ border-color:var(--amber); color:var(--amber); }
+  #photo-remove{
+    margin-top:8px; background:none; border:1px solid var(--line); color:var(--muted);
+    border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; font-family:inherit;
+  }
 
   .checkin-note{
     margin:0; font-size:12px; color:var(--muted); white-space:pre-wrap; font-family:inherit;
@@ -377,7 +396,7 @@
       </section>
 
       <section class="panel" id="panel-checkin">
-        <div class="section-title">球場打卡</div>
+        <div class="section-title" id="checkin-title">球場打卡</div>
         <form id="checkin-form">
           <div>
             <label for="league-select">聯盟</label>
@@ -405,9 +424,15 @@
           <div>
             <label for="photo-input">現場照片（僅存於此裝置）</label>
             <input type="file" id="photo-input" accept="image/*">
-            <div id="preview-box"><img id="preview-img" alt="照片預覽"></div>
+            <div id="preview-box">
+              <img id="preview-img" alt="照片預覽">
+              <button type="button" id="photo-remove">移除照片</button>
+            </div>
           </div>
-          <button type="submit">打卡</button>
+          <div class="form-actions">
+            <button type="button" id="checkin-cancel" hidden>取消編輯</button>
+            <button type="submit">打卡</button>
+          </div>
         </form>
       </section>
 
@@ -434,7 +459,7 @@
     createUserWithEmailAndPassword, signOut
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import {
-    getFirestore, collection, addDoc, deleteDoc, doc,
+    getFirestore, collection, addDoc, updateDoc, deleteDoc, doc,
     query, where, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import {
@@ -491,6 +516,10 @@
   const stadList = document.getElementById('stad-list');
   const selectedCard = document.getElementById('selected-card');
   const viewToggle = document.querySelector('.view-toggle');
+  const checkinTitle = document.getElementById('checkin-title');
+  const checkinCancel = document.getElementById('checkin-cancel');
+  const photoRemove = document.getElementById('photo-remove');
+  const submitBtn = form.querySelector('button[type=submit]');
 
   let pendingPhoto = null;
   let mapLeague = 'cpbl';
@@ -506,6 +535,8 @@
   let activeTab = 'map';
   let lastFittedKey = '';
   let mapPane = 'map';
+  let editingId = null;
+  let photoRemoved = false;
 
   dateInput.valueAsDate = new Date();
 
@@ -879,13 +910,67 @@
     });
   }
 
+  function exitEdit(resetFields){
+    const keepLeague = leagueSelect.value;
+    const keepStadium = stadiumSelect.value;
+    editingId = null;
+    photoRemoved = false;
+    pendingPhoto = null;
+    photoInput.value = '';
+    geoStatus.textContent = '';
+    checkinTitle.textContent = '球場打卡';
+    submitBtn.textContent = '打卡';
+    checkinCancel.hidden = true;
+    previewBox.style.display = 'none';
+    previewImg.removeAttribute('src');
+    if(resetFields){
+      form.reset();
+      dateInput.valueAsDate = new Date();
+      leagueSelect.value = keepLeague || 'cpbl';
+      fillStadiumSelect(leagueSelect.value, keepStadium);
+      applyNoteTemplate(true);
+    }
+  }
+
+  function startEdit(record){
+    if(!record) return;
+    editingId = record.id;
+    photoRemoved = false;
+    pendingPhoto = null;
+    photoInput.value = '';
+    geoStatus.textContent = '';
+    checkinTitle.textContent = '編輯打卡';
+    submitBtn.textContent = '儲存';
+    checkinCancel.hidden = false;
+    const league = record.league || stadiumById(record.stadiumId)?.leagues[0] || 'cpbl';
+    leagueSelect.value = league;
+    fillStadiumSelect(league, record.stadiumId);
+    dateInput.value = record.date || '';
+    noteInput.value = record.note || '';
+    const photo = getLocalPhoto(record.id);
+    if(photo){
+      previewImg.src = photo;
+      previewBox.style.display = 'block';
+    } else {
+      previewBox.style.display = 'none';
+      previewImg.removeAttribute('src');
+    }
+    switchTab('checkin');
+  }
+
   function startCheckin(stadium){
+    exitEdit(false);
     const league = stadium.leagues.includes(mapLeague) ? mapLeague : stadium.leagues[0];
     leagueSelect.value = league;
     fillStadiumSelect(league, stadium.id);
     applyNoteTemplate(true);
     switchTab('checkin');
   }
+
+  checkinCancel.addEventListener('click', () => {
+    exitEdit(true);
+    switchTab('log');
+  });
 
   function renderStadList(){
     const done = conqueredIds();
@@ -937,25 +1022,48 @@
   // ---------- Photo ----------
   photoInput.addEventListener('change', async () => {
     const file = photoInput.files[0];
-    if(!file){ pendingPhoto = null; previewBox.style.display = 'none'; return; }
+    if(!file) return;
     const reader = new FileReader();
     reader.onload = async e => {
       pendingPhoto = await compressImage(e.target.result);
+      photoRemoved = false;
       previewImg.src = pendingPhoto;
       previewBox.style.display = 'block';
     };
     reader.readAsDataURL(file);
   });
 
+  photoRemove.addEventListener('click', () => {
+    pendingPhoto = null;
+    photoRemoved = true;
+    photoInput.value = '';
+    previewBox.style.display = 'none';
+    previewImg.removeAttribute('src');
+  });
+
   // ---------- Submit ----------
+  function applyPhotoChange(recordId){
+    if(pendingPhoto) setLocalPhoto(recordId, pendingPhoto);
+    else if(photoRemoved) removeLocalPhoto(recordId);
+  }
+
+  function afterSave(league, stadiumId, goTab){
+    exitEdit(true);
+    leagueSelect.value = league;
+    fillStadiumSelect(league, stadiumId);
+    applyNoteTemplate(true);
+    mapLeague = league;
+    selectedStadiumId = stadiumId;
+    if(goTab === 'map'){
+      setMapPane('map');
+      switchTab('map');
+    } else {
+      switchTab('log');
+    }
+  }
+
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    if(!currentUser || currentUser.uid === 'preview'){
-      if(currentUser && currentUser.uid === 'preview'){
-        alert('預覽模式不能寫入雲端，請先登入後再打卡');
-      }
-      return;
-    }
     const stadiumId = stadiumSelect.value;
     const league = leagueSelect.value;
     const date = dateInput.value;
@@ -963,36 +1071,53 @@
     const stad = stadiumById(stadiumId);
     if(!stadiumId || !date || !stad) return;
 
-    const submitBtn = form.querySelector('button[type=submit]');
+    const payload = {
+      stadiumId,
+      league,
+      name: stad.name,
+      date,
+      note,
+      lat: stad.lat,
+      lng: stad.lng
+    };
+
+    if(currentUser && currentUser.uid === 'preview'){
+      if(!editingId){
+        alert('預覽模式不能寫入雲端，請先登入後再打卡');
+        return;
+      }
+      const rec = currentRecords.find(r => r.id === editingId);
+      if(rec) Object.assign(rec, payload);
+      applyPhotoChange(editingId);
+      afterSave(league, stadiumId, 'log');
+      render();
+      return;
+    }
+
+    if(!currentUser){
+      return;
+    }
+
     submitBtn.disabled = true;
     try{
-      const docRef = await addDoc(collection(db, 'checkins'), {
-        uid: currentUser.uid,
-        stadiumId,
-        league,
-        name: stad.name,
-        date,
-        note,
-        lat: stad.lat,
-        lng: stad.lng,
-        createdAt: Date.now()
-      });
-      if(pendingPhoto) setLocalPhoto(docRef.id, pendingPhoto);
-
-      form.reset();
-      dateInput.valueAsDate = new Date();
-      leagueSelect.value = league;
-      fillStadiumSelect(league, stadiumId);
-      applyNoteTemplate(true);
-      pendingPhoto = null;
-      previewBox.style.display = 'none';
-      geoStatus.textContent = '';
-      mapLeague = league;
-      selectedStadiumId = stadiumId;
-      setMapPane('map');
-      switchTab('map');
+      if(editingId){
+        await updateDoc(doc(db, 'checkins', editingId), {
+          ...payload,
+          updatedAt: Date.now()
+        });
+        applyPhotoChange(editingId);
+        afterSave(league, stadiumId, 'log');
+      } else {
+        const docRef = await addDoc(collection(db, 'checkins'), {
+          uid: currentUser.uid,
+          ...payload,
+          createdAt: Date.now()
+        });
+        applyPhotoChange(docRef.id);
+        afterSave(league, stadiumId, 'map');
+      }
     }catch(err){
-      alert('打卡失敗：' + err.message);
+      alert((editingId ? '儲存失敗：' : '打卡失敗：') + err.message);
       console.error(err);
     }finally{
       submitBtn.disabled = false;
@@ -1037,19 +1162,37 @@
               <div class="date">${record.date ? formatDate(record.date) : ''}</div>
               <span class="badge" style="background:${lg ? lg.color : '#8b9d94'};">${escapeHtml(lg ? lg.label : '')}</span>
             </div>
-            <button class="delete-btn" title="刪除" data-id="${record.id}">✕</button>
+            <div class="card-btns">
+              <button type="button" class="edit-btn" data-id="${record.id}">編輯</button>
+              <button type="button" class="delete-btn" title="刪除" data-id="${record.id}">✕</button>
+            </div>
           </div>
           ${noteHtml}
         `;
         list.appendChild(card);
       });
 
+    list.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const record = currentRecords.find(r => r.id === btn.dataset.id);
+        startEdit(record);
+      });
+    });
+
     list.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
+        if(currentUser && currentUser.uid === 'preview'){
+          currentRecords = currentRecords.filter(r => r.id !== id);
+          removeLocalPhoto(id);
+          if(editingId === id) exitEdit(true);
+          render();
+          return;
+        }
         try{
           await deleteDoc(doc(db, 'checkins', id));
           removeLocalPhoto(id);
+          if(editingId === id) exitEdit(true);
         }catch(err){
           alert('刪除失敗：' + err.message);
         }
