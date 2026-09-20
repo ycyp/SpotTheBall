@@ -93,7 +93,7 @@
     padding:0 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px);
   }
   .panel.active{ display:flex; flex-direction:column; }
-  #panel-map.active{ overflow:hidden; min-height:0; }
+  #panel-map.active{ overflow:hidden; min-height:0; position:relative; }
 
   .tabbar{
     position:fixed; left:50%; transform:translateX(-50%);
@@ -123,17 +123,34 @@
   .chip.todo-chip.active{ border-color:#8aa; color:#c5d4cc; }
 
   .progress-bar{
-    display:flex; justify-content:space-between; align-items:center;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
     font-size:13px; color:var(--muted); margin-bottom:8px; flex-shrink:0;
   }
   .progress-bar b{ color:var(--amber); font-size:16px; }
-  .legend{ display:flex; gap:12px; font-size:11px; color:var(--faint); }
+  .legend{ display:none; }
   .legend i{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
   .legend .done{ background:var(--amber); }
   .legend .todo{ background:#bbb; filter:grayscale(1); }
 
+  .view-toggle{
+    display:flex; flex-shrink:0; background:#0f2018; border:1px solid var(--line);
+    border-radius:999px; padding:2px;
+  }
+  .view-toggle button{
+    border:none; background:transparent; color:var(--muted);
+    font-family:inherit; font-size:12px; font-weight:700;
+    padding:5px 12px; border-radius:999px; cursor:pointer;
+  }
+  .view-toggle button.active{
+    background:var(--amber); color:#12261e;
+  }
+
+  .map-stage{
+    flex:1; min-height:0; position:relative;
+    display:flex; flex-direction:column;
+  }
   #overview-map{
-    flex:1; min-height:160px; border-radius:12px; border:1px solid var(--line);
+    flex:1; min-height:0; border-radius:12px; border:1px solid var(--line);
     overflow:hidden;
   }
 
@@ -142,6 +159,12 @@
     border-radius:12px; padding:10px 12px; gap:10px; align-items:center; flex-shrink:0;
   }
   .selected-card.show{ display:flex; }
+  .selected-card .actions{ display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .selected-card .swap{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+  }
   .selected-card img, .selected-card .ph{
     width:56px; height:56px; border-radius:8px; object-fit:cover; flex-shrink:0;
     border:1px solid var(--line);
@@ -159,11 +182,23 @@
   }
 
   .stad-list{
-    margin-top:8px;
-    margin-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 6px);
-    height:168px; max-height:168px; overflow:auto;
-    display:flex; flex-direction:column; gap:6px; flex-shrink:0;
+    display:none; flex:1; min-height:0; margin:0 0 4px;
+    overflow:auto; flex-direction:column; gap:6px;
   }
+
+  #panel-map[data-view="map"] .map-stage{ display:flex; }
+  #panel-map[data-view="map"] .stad-list{ display:none; }
+  #panel-map[data-view="map"] .selected-card.show{
+    position:absolute; left:16px; right:16px; margin:0;
+    bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 10px);
+    z-index:500; backdrop-filter:blur(10px);
+  }
+  #panel-map[data-view="list"] .map-stage{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip:rect(0 0 0 0); pointer-events:none;
+  }
+  #panel-map[data-view="list"] .stad-list{ display:flex; }
+  #panel-map[data-view="list"] .selected-card.show{ position:static; }
   .stad-row{
     display:flex; align-items:center; gap:10px; background:var(--card-bg);
     border:1px solid var(--line); border-radius:10px; padding:8px 10px; cursor:pointer;
@@ -320,7 +355,7 @@
     </div>
 
     <div class="panels">
-      <section class="panel active" id="panel-map">
+      <section class="panel active" id="panel-map" data-view="map">
         <div class="chip-row" id="league-chips"></div>
         <div class="chip-row" id="status-chips">
           <div class="chip active" data-status="all">全部場館</div>
@@ -328,15 +363,17 @@
           <div class="chip todo-chip" data-status="todo">尚未攻略</div>
         </div>
         <div class="progress-bar">
-          <div>已攻略 <b id="progress-num">0 / 0</b></div>
-          <div class="legend">
-            <span><i class="done"></i>彩色＝已攻略</span>
-            <span><i class="todo"></i>灰色＝尚未攻略</span>
+          <div title="彩色＝已攻略，灰色＝尚未攻略">已攻略 <b id="progress-num">0 / 0</b></div>
+          <div class="view-toggle" role="tablist" aria-label="地圖或場館">
+            <button type="button" role="tab" class="active" data-map-view="map" aria-selected="true">地圖</button>
+            <button type="button" role="tab" data-map-view="list" aria-selected="false">場館</button>
           </div>
         </div>
-        <div id="overview-map"></div>
-        <div class="selected-card" id="selected-card"></div>
+        <div class="map-stage">
+          <div id="overview-map"></div>
+        </div>
         <div class="stad-list" id="stad-list"></div>
+        <div class="selected-card" id="selected-card"></div>
       </section>
 
       <section class="panel" id="panel-checkin">
@@ -450,8 +487,10 @@
   const statusChips = document.getElementById('status-chips');
   const logLeagueChips = document.getElementById('log-league-chips');
   const progressNum = document.getElementById('progress-num');
+  const panelMap = document.getElementById('panel-map');
   const stadList = document.getElementById('stad-list');
   const selectedCard = document.getElementById('selected-card');
+  const viewToggle = document.querySelector('.view-toggle');
 
   let pendingPhoto = null;
   let mapLeague = 'cpbl';
@@ -466,6 +505,7 @@
   let isSignup = false;
   let activeTab = 'map';
   let lastFittedKey = '';
+  let mapPane = 'map';
 
   dateInput.valueAsDate = new Date();
 
@@ -665,6 +705,32 @@
     }
   }
 
+  function setMapPane(view){
+    mapPane = view === 'list' ? 'list' : 'map';
+    panelMap.dataset.view = mapPane;
+    viewToggle.querySelectorAll('button').forEach(btn => {
+      const on = btn.dataset.mapView === mapPane;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    renderSelectedCard();
+    if(mapPane === 'map' && overviewMap){
+      setTimeout(() => {
+        overviewMap.invalidateSize();
+        const s = stadiumById(selectedStadiumId);
+        if(s) overviewMap.setView([s.lat, s.lng], Math.max(overviewMap.getZoom(), 11));
+      }, 80);
+    }
+    if(mapPane === 'list' && selectedStadiumId){
+      const row = stadList.querySelector(`[data-id="${CSS.escape(selectedStadiumId)}"]`);
+      row?.scrollIntoView({ block:'nearest' });
+    }
+  }
+
+  viewToggle.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => setMapPane(btn.dataset.mapView));
+  });
+
   // ---------- Map chips ----------
   function renderLeagueChips(container, current, onPick, includeAll){
     container.innerHTML = '';
@@ -801,10 +867,16 @@
         <div class="sub">${escapeHtml(s.city)} · ${escapeHtml(s.teams)}</div>
         <div class="sub">${conquered ? '已攻略 · ' + formatDate(rec.date) : '尚未攻略'}</div>
       </div>
-      <button class="go" type="button">打卡這座</button>
+      <div class="actions">
+        <button class="go" type="button">打卡這座</button>
+        <button class="swap" type="button">${mapPane === 'map' ? '場館列表' : '看地圖'}</button>
+      </div>
     `;
     selectedCard.classList.add('show');
     selectedCard.querySelector('.go').addEventListener('click', () => startCheckin(s));
+    selectedCard.querySelector('.swap').addEventListener('click', () => {
+      setMapPane(mapPane === 'map' ? 'list' : 'map');
+    });
   }
 
   function startCheckin(stadium){
@@ -917,6 +989,7 @@
       geoStatus.textContent = '';
       mapLeague = league;
       selectedStadiumId = stadiumId;
+      setMapPane('map');
       switchTab('map');
     }catch(err){
       alert('打卡失敗：' + err.message);
